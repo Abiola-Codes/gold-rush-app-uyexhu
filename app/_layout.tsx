@@ -1,3 +1,4 @@
+
 import { Stack, useGlobalSearchParams } from 'expo-router';
 import { SafeAreaProvider, useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { Platform } from 'react-native';
@@ -50,9 +51,32 @@ export default function RootLayout() {
           <Stack
             screenOptions={{
               headerShown: false,
-              animation: 'default',
+              animation: 'slide_from_right',
+              animationDuration: 300,
             }}
-          />
+          >
+            <Stack.Screen 
+              name="index" 
+              options={{ 
+                title: 'HabitFlow',
+                animation: 'default' 
+              }} 
+            />
+            <Stack.Screen 
+              name="add-habit" 
+              options={{ 
+                title: 'Add Habit',
+                presentation: 'modal',
+                animation: 'slide_from_bottom'
+              }} 
+            />
+            <Stack.Screen 
+              name="profile" 
+              options={{ 
+                title: 'Profile' 
+              }} 
+            />
+          </Stack>
         </GestureHandlerRootView>
     </SafeAreaProvider>
   );
