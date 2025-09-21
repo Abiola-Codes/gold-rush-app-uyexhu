@@ -2,72 +2,69 @@
 import { useState, useEffect } from 'react';
 import { Habit, HabitCompletion, Stats, User } from '../types';
 import { StorageService } from '../utils/storage';
+import { useAuth } from '../contexts/AuthContext';
 
 export const useHabits = () => {
+  const { user, isAuthenticated } = useAuth();
   const [habits, setHabits] = useState<Habit[]>([]);
   const [completions, setCompletions] = useState<HabitCompletion[]>([]);
-  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
 
-  // Load data from storage on mount
+  // Load data from storage when user is authenticated
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        console.log('Loading data from storage...');
-        setLoading(true);
-        
-        const [loadedHabits, loadedCompletions, loadedUser] = await Promise.all([
-          StorageService.loadHabits(),
-          StorageService.loadCompletions(),
-          StorageService.loadUser(),
-        ]);
+    if (isAuthenticated && user) {
+      loadData();
+    } else {
+      // Clear data when not authenticated
+      setHabits([]);
+      setCompletions([]);
+      setLoading(false);
+      setInitialized(false);
+    }
+  }, [isAuthenticated, user]);
 
-        setHabits(loadedHabits);
-        setCompletions(loadedCompletions);
-        
-        // Initialize user if none exists
-        if (!loadedUser) {
-          const defaultUser = await StorageService.initializeDefaultUser();
-          setUser(defaultUser);
-        } else {
-          setUser(loadedUser);
-        }
-        
-        setInitialized(true);
-        console.log('Data loaded successfully');
-      } catch (error) {
-        console.error('Error loading data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const loadData = async () => {
+    try {
+      console.log('Loading habits data for user:', user?.name);
+      setLoading(true);
+      
+      const [loadedHabits, loadedCompletions] = await Promise.all([
+        StorageService.loadHabits(),
+        StorageService.loadCompletions(),
+      ]);
 
-    loadData();
-  }, []);
+      setHabits(loadedHabits);
+      setCompletions(loadedCompletions);
+      setInitialized(true);
+      console.log(`Loaded ${loadedHabits.length} habits and ${loadedCompletions.length} completions`);
+    } catch (error) {
+      console.error('Error loading habits data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Save habits whenever they change
   useEffect(() => {
-    if (initialized && habits.length >= 0) {
+    if (initialized && isAuthenticated && habits.length >= 0) {
       StorageService.saveHabits(habits);
     }
-  }, [habits, initialized]);
+  }, [habits, initialized, isAuthenticated]);
 
   // Save completions whenever they change
   useEffect(() => {
-    if (initialized && completions.length >= 0) {
+    if (initialized && isAuthenticated && completions.length >= 0) {
       StorageService.saveCompletions(completions);
     }
-  }, [completions, initialized]);
-
-  // Save user whenever they change
-  useEffect(() => {
-    if (initialized && user) {
-      StorageService.saveUser(user);
-    }
-  }, [user, initialized]);
+  }, [completions, initialized, isAuthenticated]);
 
   const addHabit = async (habitData: Omit<Habit, 'id' | 'createdAt' | 'completions' | 'currentStreak' | 'longestStreak'>) => {
+    if (!isAuthenticated || !user) {
+      console.error('User not authenticated');
+      return;
+    }
+
     console.log('Adding new habit:', habitData.title);
     const newHabit: Habit = {
       ...habitData,
@@ -79,19 +76,14 @@ export const useHabits = () => {
     };
     
     setHabits(prev => [...prev, newHabit]);
-    
-    // Award points for creating a habit
-    if (user) {
-      const updatedUser = {
-        ...user,
-        totalPoints: user.totalPoints + 10,
-        level: Math.floor((user.totalPoints + 10) / 100) + 1,
-      };
-      setUser(updatedUser);
-    }
   };
 
   const completeHabit = async (habitId: string, count: number = 1, notes?: string) => {
+    if (!isAuthenticated || !user) {
+      console.error('User not authenticated');
+      return;
+    }
+
     console.log('Completing habit:', habitId, 'count:', count);
     
     const habit = habits.find(h => h.id === habitId);
@@ -110,19 +102,11 @@ export const useHabits = () => {
     
     setCompletions(prev => [...prev, completion]);
     
-    // Update habit streak and calculate points
-    const pointsEarned = habit.points * count;
-    let streakBonus = 0;
-    
+    // Update habit streak
     setHabits(prev => prev.map(h => {
       if (h.id === habitId) {
         const newStreak = h.currentStreak + 1;
         const newLongestStreak = Math.max(h.longestStreak, newStreak);
-        
-        // Streak bonus calculation
-        if (newStreak >= 7) streakBonus = 20;
-        if (newStreak >= 30) streakBonus = 50;
-        if (newStreak >= 100) streakBonus = 100;
         
         return {
           ...h,
@@ -132,51 +116,29 @@ export const useHabits = () => {
       }
       return h;
     }));
-
-    // Update user points and streak
-    if (user) {
-      const totalPointsEarned = pointsEarned + streakBonus;
-      const newTotalPoints = user.totalPoints + totalPointsEarned;
-      const newLevel = Math.floor(newTotalPoints / 100) + 1;
-      
-      // Calculate overall streak (simplified - based on daily completions)
-      const today = new Date().toDateString();
-      const todayCompletions = [...completions, completion].filter(c => 
-        c.completedAt.toDateString() === today
-      );
-      
-      const updatedUser = {
-        ...user,
-        totalPoints: newTotalPoints,
-        level: newLevel,
-        currentStreak: todayCompletions.length > 0 ? user.currentStreak + 1 : 0,
-        longestStreak: Math.max(user.longestStreak, user.currentStreak + 1),
-      };
-      
-      setUser(updatedUser);
-      console.log(`Points earned: ${totalPointsEarned} (base: ${pointsEarned}, bonus: ${streakBonus})`);
-    }
   };
 
   const deleteHabit = async (habitId: string) => {
+    if (!isAuthenticated) {
+      console.error('User not authenticated');
+      return;
+    }
+
     console.log('Deleting habit:', habitId);
     setHabits(prev => prev.filter(habit => habit.id !== habitId));
     setCompletions(prev => prev.filter(completion => completion.habitId !== habitId));
   };
 
   const toggleHabitActive = async (habitId: string) => {
+    if (!isAuthenticated) {
+      console.error('User not authenticated');
+      return;
+    }
+
     console.log('Toggling habit active status:', habitId);
     setHabits(prev => prev.map(habit => 
       habit.id === habitId ? { ...habit, isActive: !habit.isActive } : habit
     ));
-  };
-
-  const updateUserProfile = async (updates: Partial<User>) => {
-    if (!user) return;
-    
-    console.log('Updating user profile:', updates);
-    const updatedUser = { ...user, ...updates };
-    setUser(updatedUser);
   };
 
   const getTodayCompletions = () => {
@@ -249,12 +211,15 @@ export const useHabits = () => {
   };
 
   const resetAllData = async () => {
-    console.log('Resetting all data');
+    if (!isAuthenticated) {
+      console.error('User not authenticated');
+      return;
+    }
+
+    console.log('Resetting all habits data');
     await StorageService.clearAllData();
     setHabits([]);
     setCompletions([]);
-    const defaultUser = await StorageService.initializeDefaultUser();
-    setUser(defaultUser);
   };
 
   return {
@@ -266,7 +231,6 @@ export const useHabits = () => {
     completeHabit,
     deleteHabit,
     toggleHabitActive,
-    updateUserProfile,
     getTodayCompletions,
     getHabitProgress,
     getWeeklyProgress,

@@ -1,15 +1,15 @@
 
-import { mockUser } from '../data/mockData';
-import Icon from '../components/Icon';
-import { Link } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link, router } from 'expo-router';
 import HabitCard from '../components/HabitCard';
 import { commonStyles, colors } from '../styles/commonStyles';
 import StatsCard from '../components/StatsCard';
 import ProgressRing from '../components/ProgressRing';
 import { useHabits } from '../hooks/useHabits';
+import { useAuth } from '../contexts/AuthContext';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Icon from '../components/Icon';
 
 const styles = StyleSheet.create({
   container: {
@@ -35,6 +35,18 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: colors.text,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   profileButton: {
     width: 40,
@@ -185,12 +197,60 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 16,
   },
+  authPrompt: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  authPromptIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  authPromptTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  authPromptDescription: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  authPromptButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  authPromptButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
 
 export default function HomeScreen() {
-  const { habits, user, loading, completeHabit, getHabitProgress, getStats } = useHabits();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { habits, loading, completeHabit, getHabitProgress, getStats } = useHabits();
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [refreshing, setRefreshing] = useState(false);
+
+  // Redirect to auth if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.replace('/auth');
+    }
+  }, [authLoading, isAuthenticated]);
 
   const stats = getStats();
   
@@ -222,6 +282,47 @@ export default function HomeScreen() {
   const todayProgress = habits.length > 0 ? 
     (habits.filter(h => getHabitProgress(h.id).percentage >= 100).length / habits.length) * 100 : 0;
 
+  // Show loading while auth is loading
+  if (authLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ProgressRing
+            progress={50}
+            size={60}
+            strokeWidth={6}
+            color={colors.primary}
+            showText={false}
+          />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show auth prompt if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.authPrompt}>
+          <View style={styles.authPromptIcon}>
+            <Icon name="person" size={40} color="white" />
+          </View>
+          <Text style={styles.authPromptTitle}>Welcome to HabitFlow</Text>
+          <Text style={styles.authPromptDescription}>
+            Sign in to start tracking your habits, earn points, and build better routines.
+          </Text>
+          <TouchableOpacity 
+            style={styles.authPromptButton}
+            onPress={() => router.push('/auth')}
+          >
+            <Text style={styles.authPromptButtonText}>Get Started</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -246,11 +347,18 @@ export default function HomeScreen() {
           <Text style={styles.greetingText}>{getGreeting()}</Text>
           <Text style={styles.userName}>{user?.name || 'HabitFlow User'}</Text>
         </View>
-        <Link href="/profile" asChild>
-          <TouchableOpacity style={styles.profileButton}>
-            <Icon name="person" size={20} color={colors.text} />
-          </TouchableOpacity>
-        </Link>
+        <View style={styles.headerActions}>
+          <Link href="/analytics" asChild>
+            <TouchableOpacity style={styles.headerButton}>
+              <Icon name="analytics" size={20} color={colors.text} />
+            </TouchableOpacity>
+          </Link>
+          <Link href="/profile" asChild>
+            <TouchableOpacity style={styles.profileButton}>
+              <Icon name="person" size={20} color={colors.text} />
+            </TouchableOpacity>
+          </Link>
+        </View>
       </View>
 
       <ScrollView 
