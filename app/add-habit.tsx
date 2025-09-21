@@ -1,13 +1,197 @@
 
-import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import Icon from '../components/Icon';
+import React, { useState } from 'react';
+import { habitCategories } from '../data/mockData';
 import { commonStyles, colors } from '../styles/commonStyles';
 import { useHabits } from '../hooks/useHabits';
-import { habitCategories } from '../data/mockData';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { HabitCategory, HabitFrequency } from '../types';
-import Icon from '../components/Icon';
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  saveButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  saveButtonDisabled: {
+    backgroundColor: colors.textSecondary,
+    opacity: 0.5,
+  },
+  saveButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  content: {
+    flex: 1,
+    padding: 20,
+  },
+  section: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 16,
+  },
+  input: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 8,
+  },
+  inputDescription: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 16,
+  },
+  categoriesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  categoryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    minWidth: '45%',
+  },
+  categoryItemSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '10',
+  },
+  categoryIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  categoryText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text,
+    flex: 1,
+  },
+  frequencyOptions: {
+    gap: 8,
+  },
+  frequencyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  frequencyItemSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '10',
+  },
+  frequencyContent: {
+    flex: 1,
+  },
+  frequencyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  frequencyDescription: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  difficultyOptions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  difficultyItem: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  difficultyItemSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '10',
+  },
+  difficultyIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  difficultyTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  difficultyPoints: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  targetSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  targetInput: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+    textAlign: 'center',
+  },
+  targetLabel: {
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: '500',
+  },
+});
 
 export default function AddHabitScreen() {
   const { addHabit } = useHabits();
@@ -15,327 +199,220 @@ export default function AddHabitScreen() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<HabitCategory>('health');
   const [frequency, setFrequency] = useState<HabitFrequency>('daily');
-  const [targetCount, setTargetCount] = useState('1');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
+  const [targetCount, setTargetCount] = useState('1');
+  const [saving, setSaving] = useState(false);
 
-  const selectedCategory = habitCategories.find(cat => cat.id === category);
+  const frequencyOptions = [
+    {
+      value: 'daily' as HabitFrequency,
+      title: 'Daily',
+      description: 'Every day',
+    },
+    {
+      value: 'weekly' as HabitFrequency,
+      title: 'Weekly',
+      description: 'Once per week',
+    },
+    {
+      value: 'monthly' as HabitFrequency,
+      title: 'Monthly',
+      description: 'Once per month',
+    },
+  ];
 
-  const handleSave = () => {
-    if (!title.trim()) {
-      console.log('Title is required');
+  const difficultyOptions = [
+    {
+      value: 'easy' as const,
+      title: 'Easy',
+      points: 10,
+      color: '#10B981',
+      icon: 'leaf',
+    },
+    {
+      value: 'medium' as const,
+      title: 'Medium',
+      points: 15,
+      color: '#F59E0B',
+      icon: 'flash',
+    },
+    {
+      value: 'hard' as const,
+      title: 'Hard',
+      points: 25,
+      color: '#EF4444',
+      icon: 'flame',
+    },
+  ];
+
+  const selectedCategory = habitCategories.find(c => c.id === category);
+  const selectedDifficulty = difficultyOptions.find(d => d.value === difficulty);
+
+  const canSave = title.trim().length > 0 && !saving;
+
+  const handleSave = async () => {
+    if (!canSave) return;
+
+    const target = parseInt(targetCount) || 1;
+    if (target < 1) {
+      Alert.alert('Invalid Target', 'Target count must be at least 1');
       return;
     }
 
-    const points = difficulty === 'easy' ? 10 : difficulty === 'medium' ? 15 : 25;
+    setSaving(true);
+    console.log('Creating new habit:', title);
 
-    addHabit({
-      title: title.trim(),
-      description: description.trim(),
-      category,
-      frequency,
-      targetCount: parseInt(targetCount) || 1,
-      difficulty,
-      color: selectedCategory?.color || colors.primary,
-      icon: selectedCategory?.icon || 'checkmark-circle',
-      isActive: true,
-      points,
-    });
+    try {
+      await addHabit({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        category,
+        frequency,
+        targetCount: target,
+        color: selectedCategory?.color || '#8B5CF6',
+        icon: selectedCategory?.icon || 'checkmark-circle',
+        isActive: true,
+        difficulty,
+        points: selectedDifficulty?.points || 10,
+      });
 
-    console.log('Habit added successfully');
-    router.back();
+      console.log('Habit created successfully');
+      router.back();
+    } catch (error) {
+      console.error('Error creating habit:', error);
+      Alert.alert('Error', 'Failed to create habit. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <SafeAreaView style={commonStyles.container}>
-      <ScrollView style={commonStyles.content} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Icon name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={commonStyles.title}>Add New Habit</Text>
-          <View style={{ width: 44 }} />
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Icon name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>New Habit</Text>
+        <TouchableOpacity
+          style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={!canSave}
+        >
+          <Text style={styles.saveButtonText}>
+            {saving ? 'Saving...' : 'Save'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Basic Information</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Habit name (e.g., Morning meditation)"
+            placeholderTextColor={colors.textSecondary}
+            value={title}
+            onChangeText={setTitle}
+            maxLength={50}
+          />
+          <Text style={styles.inputDescription}>
+            Choose a clear, specific name for your habit
+          </Text>
+          
+          <TextInput
+            style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+            placeholder="Description (optional)"
+            placeholderTextColor={colors.textSecondary}
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            maxLength={200}
+          />
+          <Text style={styles.inputDescription}>
+            Add details about what this habit involves
+          </Text>
         </View>
 
-        {/* Form */}
-        <View style={styles.form}>
-          {/* Title */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Habit Name</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Category</Text>
+          <View style={styles.categoriesGrid}>
+            {habitCategories.map((cat) => (
+              <TouchableOpacity
+                key={cat.id}
+                style={[
+                  styles.categoryItem,
+                  category === cat.id && styles.categoryItemSelected,
+                ]}
+                onPress={() => setCategory(cat.id as HabitCategory)}
+              >
+                <View style={[styles.categoryIcon, { backgroundColor: cat.color }]}>
+                  <Icon name={cat.icon as any} size={12} color="white" />
+                </View>
+                <Text style={styles.categoryText}>{cat.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Frequency</Text>
+          <View style={styles.frequencyOptions}>
+            {frequencyOptions.map((option) => (
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.frequencyItem,
+                  frequency === option.value && styles.frequencyItemSelected,
+                ]}
+                onPress={() => setFrequency(option.value)}
+              >
+                <View style={styles.frequencyContent}>
+                  <Text style={styles.frequencyTitle}>{option.title}</Text>
+                  <Text style={styles.frequencyDescription}>{option.description}</Text>
+                </View>
+                {frequency === option.value && (
+                  <Icon name="checkmark-circle" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Target & Difficulty</Text>
+          <View style={styles.targetSection}>
+            <Text style={styles.targetLabel}>Complete</Text>
             <TextInput
-              style={styles.input}
-              value={title}
-              onChangeText={setTitle}
-              placeholder="e.g., Morning Meditation"
-              placeholderTextColor={colors.textLight}
-            />
-          </View>
-
-          {/* Description */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Description (Optional)</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Add more details about your habit..."
-              placeholderTextColor={colors.textLight}
-              multiline
-              numberOfLines={3}
-            />
-          </View>
-
-          {/* Category */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Category</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-              {habitCategories.map(cat => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[
-                    styles.categoryItem,
-                    category === cat.id && styles.categoryItemActive,
-                    { borderColor: cat.color }
-                  ]}
-                  onPress={() => setCategory(cat.id as HabitCategory)}
-                >
-                  <Icon name={cat.icon as any} size={24} color={cat.color} />
-                  <Text style={[
-                    styles.categoryText,
-                    category === cat.id && styles.categoryTextActive
-                  ]}>
-                    {cat.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-
-          {/* Frequency */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Frequency</Text>
-            <View style={styles.optionRow}>
-              {[
-                { key: 'daily', label: 'Daily' },
-                { key: 'weekly', label: 'Weekly' },
-                { key: 'monthly', label: 'Monthly' },
-              ].map(freq => (
-                <TouchableOpacity
-                  key={freq.key}
-                  style={[
-                    styles.optionButton,
-                    frequency === freq.key && styles.optionButtonActive
-                  ]}
-                  onPress={() => setFrequency(freq.key as HabitFrequency)}
-                >
-                  <Text style={[
-                    styles.optionText,
-                    frequency === freq.key && styles.optionTextActive
-                  ]}>
-                    {freq.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Target Count */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Target Count</Text>
-            <TextInput
-              style={[styles.input, styles.numberInput]}
+              style={styles.targetInput}
               value={targetCount}
               onChangeText={setTargetCount}
-              placeholder="1"
-              placeholderTextColor={colors.textLight}
               keyboardType="numeric"
+              placeholder="1"
+              placeholderTextColor={colors.textSecondary}
             />
-            <Text style={styles.helperText}>
-              How many times per {frequency} do you want to complete this habit?
-            </Text>
+            <Text style={styles.targetLabel}>times per {frequency.slice(0, -2)}</Text>
           </View>
-
-          {/* Difficulty */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Difficulty</Text>
-            <View style={styles.optionRow}>
-              {[
-                { key: 'easy', label: 'Easy', points: 10, color: colors.success },
-                { key: 'medium', label: 'Medium', points: 15, color: colors.warning },
-                { key: 'hard', label: 'Hard', points: 25, color: colors.error },
-              ].map(diff => (
-                <TouchableOpacity
-                  key={diff.key}
-                  style={[
-                    styles.difficultyButton,
-                    difficulty === diff.key && { backgroundColor: diff.color + '20', borderColor: diff.color }
-                  ]}
-                  onPress={() => setDifficulty(diff.key as any)}
-                >
-                  <Text style={[
-                    styles.optionText,
-                    difficulty === diff.key && { color: diff.color }
-                  ]}>
-                    {diff.label}
-                  </Text>
-                  <Text style={[
-                    styles.pointsText,
-                    difficulty === diff.key && { color: diff.color }
-                  ]}>
-                    +{diff.points} pts
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+          
+          <View style={[styles.difficultyOptions, { marginTop: 16 }]}>
+            {difficultyOptions.map((option) => (
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.difficultyItem,
+                  difficulty === option.value && styles.difficultyItemSelected,
+                ]}
+                onPress={() => setDifficulty(option.value)}
+              >
+                <View style={[styles.difficultyIcon, { backgroundColor: option.color }]}>
+                  <Icon name={option.icon as any} size={20} color="white" />
+                </View>
+                <Text style={styles.difficultyTitle}>{option.title}</Text>
+                <Text style={styles.difficultyPoints}>+{option.points} pts</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
-
-        {/* Save Button */}
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Create Habit</Text>
-        </TouchableOpacity>
-
-        <View style={{ height: 50 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 32,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.backgroundAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  form: {
-    gap: 24,
-  },
-  inputGroup: {
-    gap: 8,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  input: {
-    backgroundColor: colors.backgroundAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: colors.text,
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  numberInput: {
-    width: 100,
-  },
-  helperText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  categoryScroll: {
-    marginTop: 8,
-  },
-  categoryItem: {
-    alignItems: 'center',
-    padding: 16,
-    marginRight: 12,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: colors.border,
-    backgroundColor: colors.backgroundAlt,
-    minWidth: 80,
-  },
-  categoryItemActive: {
-    backgroundColor: colors.card,
-    boxShadow: `0px 2px 8px ${colors.shadow}`,
-    elevation: 3,
-  },
-  categoryText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.textSecondary,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  categoryTextActive: {
-    color: colors.text,
-    fontWeight: '600',
-  },
-  optionRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  optionButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: colors.backgroundAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-  },
-  optionButtonActive: {
-    backgroundColor: colors.primary + '20',
-    borderColor: colors.primary,
-  },
-  optionText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.textSecondary,
-  },
-  optionTextActive: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  difficultyButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: colors.backgroundAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-  },
-  pointsText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textLight,
-    marginTop: 2,
-  },
-  saveButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 32,
-    boxShadow: `0px 4px 12px ${colors.shadow}`,
-    elevation: 4,
-  },
-  saveButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

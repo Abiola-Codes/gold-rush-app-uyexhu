@@ -1,523 +1,418 @@
 
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { commonStyles, colors } from '../styles/commonStyles';
-import { mockUser, mockAchievements } from '../data/mockData';
-import { useHabits } from '../hooks/useHabits';
 import Icon from '../components/Icon';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, TextInput, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { commonStyles, colors } from '../styles/commonStyles';
 import StatsCard from '../components/StatsCard';
 import ProgressRing from '../components/ProgressRing';
+import { mockAchievements } from '../data/mockData';
+import { useHabits } from '../hooks/useHabits';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import SimpleBottomSheet from '../components/BottomSheet';
 
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  profileSection: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+  },
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 16,
+  },
+  name: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  email: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginBottom: 8,
+  },
+  levelBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
+  levelText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 20,
+    gap: 12,
+    marginBottom: 24,
+  },
+  statsCard: {
+    flex: 1,
+    minWidth: '45%',
+  },
+  section: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 16,
+  },
+  achievementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  achievementIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  achievementContent: {
+    flex: 1,
+  },
+  achievementTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  achievementDescription: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  achievementPoints: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  settingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  settingsText: {
+    fontSize: 16,
+    color: colors.text,
+    marginLeft: 12,
+    flex: 1,
+  },
+  bottomSheetContent: {
+    padding: 20,
+  },
+  bottomSheetTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  input: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: colors.text,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  button: {
+    flex: 1,
+    backgroundColor: colors.primary,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  buttonSecondary: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  buttonTextSecondary: {
+    color: colors.text,
+  },
+  dangerButton: {
+    backgroundColor: '#EF4444',
+    marginTop: 20,
+  },
+});
+
 export default function ProfileScreen() {
-  const { getStats } = useHabits();
-  const [showPremiumSheet, setShowPremiumSheet] = useState(false);
-  
+  const { user, getStats, updateUserProfile, resetAllData } = useHabits();
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [editName, setEditName] = useState(user?.name || '');
+  const [editEmail, setEditEmail] = useState(user?.email || '');
+
   const stats = getStats();
+
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) {
+      Alert.alert('Error', 'Name cannot be empty');
+      return;
+    }
+
+    await updateUserProfile({
+      name: editName.trim(),
+      email: editEmail.trim(),
+    });
+
+    setShowEditProfile(false);
+    console.log('Profile updated successfully');
+  };
+
+  const handleResetData = () => {
+    Alert.alert(
+      'Reset All Data',
+      'This will permanently delete all your habits, progress, and achievements. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            await resetAllData();
+            console.log('All data reset successfully');
+          },
+        },
+      ]
+    );
+  };
+
   const unlockedAchievements = mockAchievements.filter(a => a.unlockedAt);
-  const nextLevelPoints = (mockUser.level + 1) * 100;
-  const levelProgress = (mockUser.totalPoints % 100) / 100 * 100;
+  const lockedAchievements = mockAchievements.filter(a => !a.unlockedAt);
+
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <Text style={styles.name}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={commonStyles.container}>
-      <ScrollView style={commonStyles.content} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Icon name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={commonStyles.title}>Profile</Text>
-          <TouchableOpacity style={styles.settingsButton}>
-            <Icon name="settings" size={24} color={colors.text} />
-          </TouchableOpacity>
-        </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Icon name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Profile</Text>
+        <TouchableOpacity onPress={() => setShowSettings(true)}>
+          <Icon name="settings" size={24} color={colors.text} />
+        </TouchableOpacity>
+      </View>
 
-        {/* User Info */}
-        <View style={[commonStyles.card, styles.userCard]}>
-          <View style={commonStyles.row}>
-            <Image
-              source={{ uri: mockUser.avatar }}
-              style={styles.avatar}
-            />
-            <View style={styles.userInfo}>
-              <Text style={styles.userName}>{mockUser.name}</Text>
-              <Text style={styles.userEmail}>{mockUser.email}</Text>
-              <View style={commonStyles.row}>
-                <View style={styles.levelBadge}>
-                  <Icon name="trophy" size={16} color={colors.accent} />
-                  <Text style={styles.levelText}>Level {mockUser.level}</Text>
-                </View>
-                {!mockUser.isPremium && (
-                  <TouchableOpacity 
-                    style={styles.premiumBadge}
-                    onPress={() => setShowPremiumSheet(true)}
-                  >
-                    <Icon name="star" size={14} color={colors.warning} />
-                    <Text style={styles.premiumText}>Upgrade</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.profileSection}>
+          <Image source={{ uri: user.avatar }} style={styles.avatar} />
+          <Text style={styles.name}>{user.name}</Text>
+          <Text style={styles.email}>{user.email}</Text>
+          <View style={styles.levelBadge}>
+            <Text style={styles.levelText}>Level {user.level}</Text>
           </View>
-          
-          {/* Level Progress */}
-          <View style={styles.levelProgress}>
-            <View style={commonStyles.spaceBetween}>
-              <Text style={styles.progressLabel}>Progress to Level {mockUser.level + 1}</Text>
-              <Text style={styles.progressPoints}>
-                {mockUser.totalPoints % 100}/{nextLevelPoints % 100} pts
-              </Text>
-            </View>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: `${levelProgress}%` }]} />
-            </View>
-          </View>
-        </View>
-
-        {/* Stats Overview */}
-        <Text style={[commonStyles.subtitle, { marginBottom: 16 }]}>Your Stats</Text>
-        <View style={styles.statsGrid}>
-          <StatsCard
-            title="Total Habits"
-            value={stats.totalHabits}
-            icon="list"
+          <ProgressRing
+            progress={(user.totalPoints % 100) / 100 * 100}
+            size={80}
+            strokeWidth={8}
             color={colors.primary}
-          />
-          <StatsCard
-            title="Current Streak"
-            value={`${stats.currentStreak} days`}
-            icon="flame"
-            color={colors.warning}
+            showText={true}
+            text={`${user.totalPoints % 100}/100`}
           />
         </View>
-        
+
         <View style={styles.statsGrid}>
           <StatsCard
             title="Total Points"
-            value={stats.totalPoints.toLocaleString()}
-            icon="trophy"
-            color={colors.accent}
+            value={user.totalPoints}
+            icon="star"
+            color={colors.primary}
+            style={styles.statsCard}
           />
           <StatsCard
-            title="Achievements"
-            value={unlockedAchievements.length}
-            subtitle={`of ${mockAchievements.length}`}
-            icon="medal"
-            color={colors.success}
+            title="Current Streak"
+            value={`${user.currentStreak} days`}
+            icon="flame"
+            color="#F59E0B"
+            style={styles.statsCard}
+          />
+          <StatsCard
+            title="Longest Streak"
+            value={`${user.longestStreak} days`}
+            icon="trophy"
+            color="#10B981"
+            style={styles.statsCard}
+          />
+          <StatsCard
+            title="Active Habits"
+            value={stats.activeHabits}
+            icon="checkmark-circle"
+            color="#8B5CF6"
+            style={styles.statsCard}
           />
         </View>
 
-        {/* Achievements */}
-        <View style={styles.achievementsSection}>
-          <Text style={[commonStyles.subtitle, { marginBottom: 16 }]}>Achievements</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {mockAchievements.map(achievement => (
-              <View
-                key={achievement.id}
-                style={[
-                  styles.achievementCard,
-                  !achievement.unlockedAt && styles.achievementCardLocked
-                ]}
-              >
-                <View style={[
-                  styles.achievementIcon,
-                  { backgroundColor: achievement.unlockedAt ? colors.accent + '20' : colors.border }
-                ]}>
-                  <Icon
-                    name={achievement.icon as any}
-                    size={24}
-                    color={achievement.unlockedAt ? colors.accent : colors.textLight}
-                  />
-                </View>
-                <Text style={[
-                  styles.achievementTitle,
-                  !achievement.unlockedAt && styles.achievementTitleLocked
-                ]}>
-                  {achievement.title}
-                </Text>
-                <Text style={styles.achievementPoints}>+{achievement.points} pts</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Achievements</Text>
+          {unlockedAchievements.map((achievement) => (
+            <View key={achievement.id} style={styles.achievementItem}>
+              <View style={styles.achievementIcon}>
+                <Icon name={achievement.icon as any} size={20} color="white" />
               </View>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Premium Features */}
-        {!mockUser.isPremium && (
-          <TouchableOpacity 
-            style={styles.premiumCard}
-            onPress={() => setShowPremiumSheet(true)}
-          >
-            <View style={commonStyles.row}>
-              <View style={styles.premiumIcon}>
-                <Icon name="star" size={24} color={colors.warning} />
+              <View style={styles.achievementContent}>
+                <Text style={styles.achievementTitle}>{achievement.title}</Text>
+                <Text style={styles.achievementDescription}>{achievement.description}</Text>
               </View>
-              <View style={styles.premiumContent}>
-                <Text style={styles.premiumTitle}>Upgrade to Premium</Text>
-                <Text style={styles.premiumDescription}>
-                  Unlock advanced analytics, personalized coaching, and exclusive content
-                </Text>
-              </View>
-              <Icon name="chevron-forward" size={20} color={colors.textSecondary} />
+              <Text style={styles.achievementPoints}>+{achievement.points}</Text>
             </View>
-          </TouchableOpacity>
-        )}
-
-        {/* Menu Items */}
-        <View style={styles.menuSection}>
-          {[
-            { icon: 'analytics', title: 'Analytics', subtitle: 'View detailed insights' },
-            { icon: 'people', title: 'Community', subtitle: 'Connect with others' },
-            { icon: 'notifications', title: 'Notifications', subtitle: 'Manage reminders' },
-            { icon: 'help-circle', title: 'Help & Support', subtitle: 'Get assistance' },
-          ].map((item, index) => (
-            <TouchableOpacity key={index} style={styles.menuItem}>
-              <View style={commonStyles.row}>
-                <View style={styles.menuIcon}>
-                  <Icon name={item.icon as any} size={20} color={colors.primary} />
-                </View>
-                <View style={styles.menuContent}>
-                  <Text style={styles.menuTitle}>{item.title}</Text>
-                  <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
-                </View>
-                <Icon name="chevron-forward" size={20} color={colors.textSecondary} />
+          ))}
+          
+          {lockedAchievements.slice(0, 2).map((achievement) => (
+            <View key={achievement.id} style={[styles.achievementItem, { opacity: 0.5 }]}>
+              <View style={[styles.achievementIcon, { backgroundColor: colors.textSecondary }]}>
+                <Icon name="lock-closed" size={20} color="white" />
               </View>
-            </TouchableOpacity>
+              <View style={styles.achievementContent}>
+                <Text style={styles.achievementTitle}>{achievement.title}</Text>
+                <Text style={styles.achievementDescription}>{achievement.description}</Text>
+              </View>
+              <Text style={styles.achievementPoints}>+{achievement.points}</Text>
+            </View>
           ))}
         </View>
-
-        <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Premium Bottom Sheet */}
+      {/* Edit Profile Bottom Sheet */}
       <SimpleBottomSheet
-        isVisible={showPremiumSheet}
-        onClose={() => setShowPremiumSheet(false)}
+        isVisible={showEditProfile}
+        onClose={() => setShowEditProfile(false)}
       >
-        <View style={styles.premiumSheetContent}>
-          <View style={styles.premiumSheetHeader}>
-            <Icon name="star" size={32} color={colors.warning} />
-            <Text style={styles.premiumSheetTitle}>HabitFlow Premium</Text>
-            <Text style={styles.premiumSheetSubtitle}>
-              Supercharge your habit building journey
-            </Text>
+        <View style={styles.bottomSheetContent}>
+          <Text style={styles.bottomSheetTitle}>Edit Profile</Text>
+          
+          <TextInput
+            style={styles.input}
+            placeholder="Name"
+            placeholderTextColor={colors.textSecondary}
+            value={editName}
+            onChangeText={setEditName}
+          />
+          
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor={colors.textSecondary}
+            value={editEmail}
+            onChangeText={setEditEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={[styles.button, styles.buttonSecondary]}
+              onPress={() => setShowEditProfile(false)}
+            >
+              <Text style={[styles.buttonText, styles.buttonTextSecondary]}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.button} onPress={handleSaveProfile}>
+              <Text style={styles.buttonText}>Save</Text>
+            </TouchableOpacity>
           </View>
+        </View>
+      </SimpleBottomSheet>
 
-          <View style={styles.premiumFeatures}>
-            {[
-              'Advanced analytics and insights',
-              'Personalized AI coaching',
-              'Unlimited habit tracking',
-              'Custom themes and icons',
-              'Priority customer support',
-              'Exclusive community access',
-            ].map((feature, index) => (
-              <View key={index} style={commonStyles.row}>
-                <Icon name="checkmark-circle" size={20} color={colors.success} />
-                <Text style={styles.featureText}>{feature}</Text>
-              </View>
-            ))}
-          </View>
-
-          <View style={styles.pricingCard}>
-            <Text style={styles.pricingTitle}>Monthly Subscription</Text>
-            <Text style={styles.pricingPrice}>$9.99/month</Text>
-            <Text style={styles.pricingDescription}>
-              Cancel anytime • 7-day free trial
-            </Text>
-          </View>
-
-          <TouchableOpacity style={styles.subscribeButton}>
-            <Text style={styles.subscribeButtonText}>Start Free Trial</Text>
+      {/* Settings Bottom Sheet */}
+      <SimpleBottomSheet
+        isVisible={showSettings}
+        onClose={() => setShowSettings(false)}
+      >
+        <View style={styles.bottomSheetContent}>
+          <Text style={styles.bottomSheetTitle}>Settings</Text>
+          
+          <TouchableOpacity
+            style={styles.settingsButton}
+            onPress={() => {
+              setShowSettings(false);
+              setEditName(user.name);
+              setEditEmail(user.email);
+              setShowEditProfile(true);
+            }}
+          >
+            <Icon name="person" size={20} color={colors.text} />
+            <Text style={styles.settingsText}>Edit Profile</Text>
+            <Icon name="chevron-forward" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => setShowPremiumSheet(false)}>
-            <Text style={styles.cancelText}>Maybe later</Text>
+          <TouchableOpacity style={styles.settingsButton}>
+            <Icon name="notifications" size={20} color={colors.text} />
+            <Text style={styles.settingsText}>Notifications</Text>
+            <Icon name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.settingsButton}>
+            <Icon name="help-circle" size={20} color={colors.text} />
+            <Text style={styles.settingsText}>Help & Support</Text>
+            <Icon name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, styles.dangerButton]}
+            onPress={handleResetData}
+          >
+            <Text style={styles.buttonText}>Reset All Data</Text>
           </TouchableOpacity>
         </View>
       </SimpleBottomSheet>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.backgroundAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  settingsButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.backgroundAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  userCard: {
-    marginBottom: 24,
-  },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 16,
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  userEmail: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 8,
-  },
-  levelBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.accent + '20',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginRight: 8,
-  },
-  levelText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.accent,
-    marginLeft: 4,
-  },
-  premiumBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.warning + '20',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  premiumText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.warning,
-    marginLeft: 4,
-  },
-  levelProgress: {
-    marginTop: 16,
-  },
-  progressLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  progressPoints: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: colors.border,
-    borderRadius: 4,
-    marginTop: 8,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 4,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
-  },
-  achievementsSection: {
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  achievementCard: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginRight: 12,
-    alignItems: 'center',
-    width: 120,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  achievementCardLocked: {
-    opacity: 0.6,
-  },
-  achievementIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  achievementTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  achievementTitleLocked: {
-    color: colors.textLight,
-  },
-  achievementPoints: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: colors.accent,
-  },
-  premiumCard: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    borderWidth: 2,
-    borderColor: colors.warning + '40',
-  },
-  premiumIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.warning + '20',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  premiumContent: {
-    flex: 1,
-  },
-  premiumTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  premiumDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  menuSection: {
-    gap: 4,
-  },
-  menuItem: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  menuIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary + '20',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  menuContent: {
-    flex: 1,
-  },
-  menuTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.text,
-    marginBottom: 2,
-  },
-  menuSubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  premiumSheetContent: {
-    padding: 24,
-  },
-  premiumSheetHeader: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  premiumSheetTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  premiumSheetSubtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  premiumFeatures: {
-    gap: 16,
-    marginBottom: 32,
-  },
-  featureText: {
-    fontSize: 16,
-    color: colors.text,
-    marginLeft: 12,
-  },
-  pricingCard: {
-    backgroundColor: colors.backgroundAlt,
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  pricingTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  pricingPrice: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: colors.primary,
-    marginBottom: 4,
-  },
-  pricingDescription: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  subscribeButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  subscribeButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  cancelText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-});
